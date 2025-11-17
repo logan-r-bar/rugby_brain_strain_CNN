@@ -1,3 +1,15 @@
+"""
+Takes a cleaned impact time series CSV file as input, and applies teh preproccessing steps from the 
+Convolutional neural network for efficient estimation of regional brain strains paper. This includes:
+1) Generating all permutations of the XYZ axes
+2) Applying the conjugate rotational vector transform
+3) Centering and padding the time series to a fixed length
+
+Saves all permutations to a single HDF5 file under a group named after the input file.
+
+Original MATLAB implementation can be found here: https://github.com/Jilab-biomechanics/CNN-brain-strains
+"""
+
 import os
 import pandas as pd
 import numpy as np
@@ -8,9 +20,17 @@ from conjugate import conjugate_vrot_transform
 
 
 def process_file(filepath, output_h5_path):
+    """
+    Processes a single input CSV file and saves all its augmented
+    permutations to a single HDF5 file.
+    
+    Args:
+        filepath (str): Path to the input CSV file.
+        output_h5_path (str): Path to the output HDF5 file.
+    """
     df = pd.read_csv(filepath)
     profile = df.iloc[:, [4,5,6]].to_numpy()
-    cnn_length = 550
+    cnn_length = 700
     axes_permutations = list(itertools.permutations([0,1,2]))
     target_idx = cnn_length // 2
     base_name = os.path.basename(filepath)
@@ -18,11 +38,10 @@ def process_file(filepath, output_h5_path):
 
     with h5py.File(output_h5_path, 'a') as hf:
         if group_name in hf:
-            print(f"Group '{group_name}' already exists. Overwriting.")
             del hf[group_name]
         group = hf.create_group(group_name)
         
-        print(f"Processing {filepath} -> Group '{group_name}' in {output_h5_path}")
+        print(f"Processing {filepath}")
 
         for i, perm in enumerate(axes_permutations):
             permuted = profile[:, perm]
@@ -31,7 +50,7 @@ def process_file(filepath, output_h5_path):
             cnn_input = padded_profile.T[np.newaxis, :, :]
             dataset_name = f"perm_{i+1}"
             group.create_dataset(dataset_name, data=cnn_input)
-            print(f"  - Saved dataset '{dataset_name}'")
+            print(f"Saved dataset '{dataset_name}'")
 
 if __name__ == "__main__":
     import argparse

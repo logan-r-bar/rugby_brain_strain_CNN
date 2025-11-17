@@ -1,6 +1,21 @@
+"""
+Computes the resultant values from 3D or 4D time series data.
+
+Original MATLAB implementation can be found here: https://github.com/Jilab-biomechanics/CNN-brain-strains
+"""
+
 import numpy as np
 
 def resultant_val(val):
+    """
+    Computes the resultant values from 3D or 4D time series data.
+    
+    Args:
+        val (np.ndarray): Nx3 or Nx4 array of time series data.
+    
+    Returns:
+        res (np.ndarray): Resultant values as a 1D array (if input is Nx3)
+                          or Nx2 array (if input is Nx4)."""
     val = np.asarray(val)
 
     if val.shape[1] == 3:
