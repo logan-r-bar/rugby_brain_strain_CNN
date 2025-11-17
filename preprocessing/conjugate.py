@@ -7,7 +7,8 @@ Original MATLAB implementation can be found here: https://github.com/Jilab-biome
 
 import numpy as np
 from resultant_val import resultant_val
-from vector_angle_conversion import vec2ang, ang2vec
+from vector_angle_conversion import ang2vec, vec2ang
+
 
 def conjugate_rotational_axis(theta, alpha):
     """
@@ -30,6 +31,7 @@ def conjugate_rotational_axis(theta, alpha):
     alpha_new = -alpha
     return theta_new, alpha_new
 
+
 def conjugate_vrot_transform(profile):
     """
     Function transform the rotational profile to the profile with cojugate
@@ -37,7 +39,7 @@ def conjugate_vrot_transform(profile):
 
     Args:
         profile (np.ndarray): Nx3 array of rotational velocity vectors.
-    
+
     Returns:
         np.ndarray: Transformed profile with conjugate rotational axis.
     """

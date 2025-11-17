@@ -10,37 +10,38 @@ Saves all permutations to a single HDF5 file under a group named after the input
 Original MATLAB implementation can be found here: https://github.com/Jilab-biomechanics/CNN-brain-strains
 """
 
-import os
-import pandas as pd
-import numpy as np
 import itertools
+import os
+
 import h5py
-from shift_and_pad import shift_and_pad
+import numpy as np
+import pandas as pd
 from conjugate import conjugate_vrot_transform
+from shift_and_pad import shift_and_pad
 
 
 def process_file(filepath, output_h5_path):
     """
     Processes a single input CSV file and saves all its augmented
     permutations to a single HDF5 file.
-    
+
     Args:
         filepath (str): Path to the input CSV file.
         output_h5_path (str): Path to the output HDF5 file.
     """
     df = pd.read_csv(filepath)
-    profile = df.iloc[:, [4,5,6]].to_numpy()
+    profile = df.iloc[:, [4, 5, 6]].to_numpy()
     cnn_length = 700
-    axes_permutations = list(itertools.permutations([0,1,2]))
+    axes_permutations = list(itertools.permutations([0, 1, 2]))
     target_idx = cnn_length // 2
     base_name = os.path.basename(filepath)
     group_name, _ = os.path.splitext(base_name)
 
-    with h5py.File(output_h5_path, 'a') as hf:
+    with h5py.File(output_h5_path, "a") as hf:
         if group_name in hf:
             del hf[group_name]
         group = hf.create_group(group_name)
-        
+
         print(f"Processing {filepath}")
 
         for i, perm in enumerate(axes_permutations):
@@ -52,11 +53,15 @@ def process_file(filepath, output_h5_path):
             group.create_dataset(dataset_name, data=cnn_input)
             print(f"Saved dataset '{dataset_name}'")
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Process impact data for CNN input")
     parser.add_argument("filepath", type=str)
-    parser.add_argument("--output_h5", type=str, default='data/impact_data_augmented.h5')
+    parser.add_argument(
+        "--output_h5", type=str, default="data/impact_data_augmented.h5"
+    )
 
     args = parser.parse_args()
     process_file(args.filepath, args.output_h5)
