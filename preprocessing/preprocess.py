@@ -33,6 +33,7 @@ def process_file(filepath, output_h5_path):
     profile = df.iloc[:, [4, 5, 6]].to_numpy()
     cnn_length = 700
     axes_permutations = list(itertools.permutations([0, 1, 2]))
+    axes_labels = ["x", "y", "z"]
     target_idx = cnn_length // 2
     base_name = os.path.basename(filepath)
     group_name, _ = os.path.splitext(base_name)
@@ -49,7 +50,8 @@ def process_file(filepath, output_h5_path):
             conj_profile = conjugate_vrot_transform(permuted)
             padded_profile = shift_and_pad(conj_profile, target_idx, cnn_length)
             cnn_input = padded_profile.T[np.newaxis, :, :]
-            dataset_name = f"perm_{i+1}"
+            perm_name = "".join([axes_labels[p] for p in perm])
+            dataset_name = f"perm_{perm_name}"
             group.create_dataset(dataset_name, data=cnn_input)
             print(f"Saved dataset '{dataset_name}'")
 
