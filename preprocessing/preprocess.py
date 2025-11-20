@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process impact data for CNN input")
     parser.add_argument("filepath", type=str)
     parser.add_argument(
-        "--output_h5", type=str, default="data/impact_data_augmented.h5"
+        "--output_h5", type=str, default="data/test.h5"
     )
 
     args = parser.parse_args()

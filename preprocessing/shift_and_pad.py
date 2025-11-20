@@ -29,8 +29,33 @@ def shift_and_pad(profile, target_idx, cnn_length):
     end = min(start + N, cnn_length)
     profile_end = end - start
     padded[start:end] = profile[:profile_end]
+
+    # RepPad implementation
     if start > 0:
-        padded[:start] = profile[0]
+        # Calculate maximum padding count
+        max_pad_num = start // (N + 1)
+        if max_pad_num > 0:
+            # Randomly select a padding count
+            pad_num = np.random.randint(1, max_pad_num + 1)
+            # Create the repeated sequence
+            rep_seq = np.concatenate([profile, np.zeros((1, C))])
+            rep_seq = np.tile(rep_seq, (pad_num, 1))
+            # Fill the padding area
+            pad_len = min(start, len(rep_seq))
+            padded[start - pad_len : start] = rep_seq[-pad_len:]
+
     if end < cnn_length:
-        padded[end - 1 :] = profile[-1]
+        # Calculate maximum padding count
+        remaining_len = cnn_length - end
+        max_pad_num = remaining_len // (N + 1)
+        if max_pad_num > 0:
+            # Randomly select a padding count
+            pad_num = np.random.randint(1, max_pad_num + 1)
+            # Create the repeated sequence
+            rep_seq = np.concatenate([np.zeros((1, C)), profile])
+            rep_seq = np.tile(rep_seq, (pad_num, 1))
+            # Fill the padding area
+            pad_len = min(remaining_len, len(rep_seq))
+            padded[end : end + pad_len] = rep_seq[:pad_len]
+
     return padded
