@@ -1,3 +1,9 @@
+"""
+Module to compute the UBrIC score from angular acceleration and velocity time series data.
+This is a recreation of the Development of a Metric for Predicting Brain Strain Responses Using Head Kinematics paper
+Comments should describe the steps taken to compute UBrIC as per the paper.
+Paper can be found here: https://doi.org/10.1007/s10439-018-2015-9"""
+
 import numpy as np
 import pandas as pd
 import math
@@ -10,7 +16,7 @@ a_cr = np.array([20e3, 10.3e3, 7.76e3])         # rad/s²
 def ubric_term(wp, ap):
     """
     Compute UBrIC term for a single axis.
-    This is the part of equation 2 in the paper that is summed over the three axes.
+    This is the part of equation 2 in the paper that is being summed within the square brackets.
     
     Args:
         wp (float): Normalized peak relative velocity.
