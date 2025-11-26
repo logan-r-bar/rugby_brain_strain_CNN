@@ -3,7 +3,7 @@ import subprocess
 
 
 def process_all_files():
-    raw_data_dir = "data/impact_data_raw"
+    raw_data_dir = "data/pred_true/impact_data"
 
     if not os.path.exists(raw_data_dir):
         print(f"Directory not found: {raw_data_dir}")

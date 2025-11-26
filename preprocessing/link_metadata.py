@@ -4,52 +4,68 @@ import os
 
 def get_metadata_prediction(impact_filepath):
     """
-    Parses an impact file path to find the corresponding metadata entry and return the 'pred' value.
+    Parses an impact file path to find the corresponding metadata entry and return the 'pred' and 'ubric' values.
+    It handles cases where metadata is split across multiple files and filters by prediction value based on the directory.
 
     Args:
         impact_filepath (str): The path to the impact data file.
 
     Returns:
-        bool: The 'pred' value from the metadata file.
+        tuple: A tuple containing the 'pred' and 'ubric' values from the metadata file.
     """
     base_name = os.path.basename(impact_filepath)
     
+    # Correctly determine the directory containing 'pred_true' or 'pred_false'
+    path_parts = impact_filepath.split(os.sep)
+    pred_value_to_find = None
+    if 'pred_true' in path_parts:
+        pred_value_to_find = True
+    elif 'pred_false' in path_parts:
+        pred_value_to_find = False
+
     # Regex to extract identifiers from the filename
-    match = re.match(r'(\d+)_(\d+)_(g\d+|tw\d+)(?:_(\d+))?\.csv', base_name)
+    match = re.match(r'(\d+)_([\w\d]+)_(g\d+|tw\d+)(?:_(\d+))?\.csv', base_name)
     if not match:
         raise ValueError(f"Filename {base_name} does not match expected pattern.")
 
     team_code_str, id_str, suffix, instance_str = match.groups()
-    team_code = int(team_code_str)
-    player_id = int(id_str)
     instance = int(instance_str) if instance_str else 0
 
+    # Try base metadata file first
     metadata_filename = f"metadata_{suffix}.csv"
     metadata_filepath = os.path.join('data', 'metadata', metadata_filename)
 
-    if not os.path.exists(metadata_filepath):
-        raise FileNotFoundError(f"Metadata file not found at {metadata_filepath}")
+    if os.path.exists(metadata_filepath):
+        metadata_df = pd.read_csv(metadata_filepath, dtype={'id': str, 'team_code': str})
+        
+        # Filter by pred value if specified
+        if pred_value_to_find is not None:
+            metadata_df = metadata_df[metadata_df['pred'] == pred_value_to_find]
 
-    metadata_df = pd.read_csv(metadata_filepath)
+        matching_rows = metadata_df[(metadata_df['team_code'] == team_code_str) & (metadata_df['id'] == id_str)]
+        if instance < len(matching_rows):
+            return matching_rows.iloc[instance]['pred']
 
-    # Find all matching rows
-    matching_rows = metadata_df[(metadata_df['team_code'] == team_code) & (metadata_df['id'] == player_id)]
+    # If not found, check for numbered suffixes
+    i = 1
+    while True:
+        metadata_filename_numbered = f"metadata_{suffix}_{i}.csv"
+        metadata_filepath_numbered = os.path.join('data', 'metadata', metadata_filename_numbered)
+        if not os.path.exists(metadata_filepath_numbered):
+            # No more numbered files to check
+            break
 
-    if instance < len(matching_rows):
-        return matching_rows.iloc[instance]['pred']
-    else:
-        raise IndexError(f"Instance {instance} not found for team_code {team_code} and id {player_id} in {metadata_filename}")
+        metadata_df = pd.read_csv(metadata_filepath_numbered, dtype={'id': str, 'team_code': str})
 
-if __name__ == '__main__':
-    # Example usage:
-    test_file_1 = 'data/impact_data/005_g2/005_002_g2.csv'
-    test_file_2 = 'data/impact_data/005_g2/005_004_g2_00.csv'
+        # Filter by pred value if specified
+        if pred_value_to_find is not None:
+            metadata_df = metadata_df[metadata_df['pred'] == pred_value_to_find]
+
+        matching_rows = metadata_df[(metadata_df['team_code'] == team_code_str) & (metadata_df['id'] == id_str)]
+
+        if instance < len(matching_rows):
+            return matching_rows.iloc[instance]['pred']
+        
+        i += 1
     
-    try:
-        pred_value_1 = get_metadata_prediction(test_file_1)
-        print(f"Prediction for {os.path.basename(test_file_1)}: {pred_value_1}")
-
-        pred_value_2 = get_metadata_prediction(test_file_2)
-        print(f"Prediction for {os.path.basename(test_file_2)}: {pred_value_2}")
-    except (ValueError, FileNotFoundError, IndexError) as e:
-        print(e)
+    raise IndexError(f"Instance {instance} not found for team_code {team_code_str} and id {id_str} in any metadata file for {suffix} with pred={pred_value_to_find}")

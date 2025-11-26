@@ -19,7 +19,7 @@ import pandas as pd
 from conjugate import conjugate_vrot_transform
 from shift_and_pad import shift_and_pad
 from calculate_ubric import read_impact
-from preprocessing.link_metadata import get_metadata_prediction
+from link_metadata import get_metadata_prediction
 
 
 def process_file(filepath, output_h5_path):
@@ -40,16 +40,15 @@ def process_file(filepath, output_h5_path):
     base_name = os.path.basename(filepath)
     group_name, _ = os.path.splitext(base_name)
 
-    # Calculate and store the peak resultant value
-    ubric_score = read_impact(filepath)
+    # Get metadata prediction and ubric score
     pred = get_metadata_prediction(filepath)
-
+    ubric_score = read_impact(filepath)
     with h5py.File(output_h5_path, "a") as hf:
         if group_name in hf:
             del hf[group_name]
         group = hf.create_group(group_name)
-        group.attrs["ubric_score"] = ubric_score
         group.attrs["pred"] = pred
+        group.attrs["ubric_score"] = ubric_score
         print(f"Processing {filepath}")
 
         for i, perm in enumerate(axes_permutations):
@@ -78,7 +77,7 @@ if __name__ == "__main__":
     if output_h5_path is None:
         base_name = os.path.basename(args.filepath)
         if "_g" in base_name:
-            output_h5_path = "data/impact_data_test.h5"
+            output_h5_path = "data/impact_data_game_augmented.h5"
         elif "_tw" in base_name:
-            output_h5_path = "data/impact_data_test.h5"
+            output_h5_path = "data/impact_data_training_augmented.h5"
     process_file(args.filepath, output_h5_path)
