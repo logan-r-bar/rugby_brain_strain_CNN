@@ -39,7 +39,6 @@ def process_file(filepath, output_h5_path):
     
     profile = df.iloc[:, [4, 5, 6]].to_numpy()
     profile = filter_and_detrend(profile, fs=fs)
-    
     cnn_length = 2000
     axes_permutations = list(itertools.permutations([0, 1, 2]))
     axes_labels = ["x", "y", "z"]
