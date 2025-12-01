@@ -7,11 +7,23 @@ Paper can be found here: https://doi.org/10.1007/s10439-018-2015-9"""
 import numpy as np
 import pandas as pd
 import math
-from scipy import integrate
+from scipy import integrate, signal
 
 # Critical values for UBrIC calculation (from Table 4 in the reference paper)
 w_cr = np.array([211.0, 171.0, 115.0])          
-a_cr = np.array([20e3, 10.3e3, 7.76e3])         
+a_cr = np.array([20e3, 10.3e3, 7.76e3])
+r = 2.0 # reccommended value from the paper         
+
+def filter_and_detrend(data, cutoff=300.0, fs=3200.0, order=4):
+    """
+    Zero-phase 4th-order Butterworth filter for head kinematics.
+    Correctly normalizes cutoff frequency using fs.
+    """
+    data_detrended = signal.detrend(data)
+    b, a = signal.butter(order, cutoff, btype='low', fs=fs)
+    y = signal.filtfilt(b, a, data_detrended, axis=0)
+    return y
+
 
 def ubric_term(wp, ap):
     """
@@ -38,7 +50,8 @@ def acceleration_to_velocity(acc, time):
     Returns:
         vel (np.ndarray): Angular velocity time series.
     """
-    vel = np.concatenate(([0.0], integrate.cumulative_trapezoid(acc, time)))
+    acc_detrended = signal.detrend(acc)
+    vel = integrate.cumulative_trapezoid(acc_detrended, time, initial=0.0)
     return vel
 
 def compute_ubric(acc_values, vel_values):
@@ -66,12 +79,10 @@ def compute_ubric(acc_values, vel_values):
     t_y = ubric_term(w_prime[1], a_prime[1])
     t_z = ubric_term(w_prime[2], a_prime[2])
 
-
-    r = 2.0 # reccommended value from the paper
-
     # Compute overall UBrIC score (Equation 2)
     ubric = (t_x**r + t_y**r + t_z**r)**(1/r)
-    return ubric
+    ubric_nonzero = max(ubric, 0) 
+    return ubric_nonzero
 
 def read_impact(path):
     """
@@ -87,19 +98,20 @@ def read_impact(path):
     time_col = "time"
     
     time = df[time_col].astype(float).to_numpy()
+    
+    # Calculate sampling frequency, assuming uniform sampling
+    freq = 1 / (time[1] - time[0])
+
     acc_x = df["ang_x"].astype(float).to_numpy()
     acc_y = df["ang_y"].astype(float).to_numpy()
     acc_z = df["ang_z"].astype(float).to_numpy()
-    acc_values = np.array([acc_x, acc_y, acc_z])
-    vel_x = acceleration_to_velocity(acc_x, time)
-    vel_y = acceleration_to_velocity(acc_y, time)
-    vel_z = acceleration_to_velocity(acc_z, time)
+    acc_x_filtered = filter_and_detrend(acc_x, cutoff=300.0, fs=freq, order=4)
+    acc_y_filtered = filter_and_detrend(acc_y, cutoff=300.0, fs=freq, order=4)
+    acc_z_filtered = filter_and_detrend(acc_z, cutoff=300.0, fs=freq, order=4)
+    acc_values = np.array([acc_x_filtered, acc_y_filtered, acc_z_filtered])
+    vel_x = acceleration_to_velocity(acc_x_filtered, time)
+    vel_y = acceleration_to_velocity(acc_y_filtered, time)
+    vel_z = acceleration_to_velocity(acc_z_filtered, time)
     vel_values = np.array([vel_x, vel_y, vel_z])
     ubric_score = compute_ubric(acc_values, vel_values)
     return ubric_score
-
-
-
-
-
-

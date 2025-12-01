@@ -1,8 +1,19 @@
 import pandas as pd
 import re
 import os
+import numpy as np
 
-def get_metadata_prediction(impact_filepath):
+# List of all possible impact locations
+IMPACT_LOCATIONS = [
+    'Back', 'Back Left', 'Back Neck', 'Back Right', 'Back Top Left', 'Back Top Right',
+    'Bottom Back', 'Bottom Back Left', 'Bottom Back Right', 'Bottom Front', 'Bottom Left',
+    'Bottom Right', 'Front', 'Front Bottom Left', 'Front Bottom Right', 'Front Left',
+    'Front Neck', 'Front Right', 'Front Top Left', 'Front Top Right', 'Left',
+    'Left Neck', 'Right', 'Right Neck', 'Top Back', 'Top Front', 'Top Left',
+    'Top Right', 'Unknown'
+]
+
+def get_metadata(impact_filepath):
     """
     Parses an impact file path to find the corresponding metadata entry and return the 'pred' and 'ubric' values.
     It handles cases where metadata is split across multiple files and filters by prediction value based on the directory.
@@ -44,7 +55,13 @@ def get_metadata_prediction(impact_filepath):
 
         matching_rows = metadata_df[(metadata_df['team_code'] == team_code_str) & (metadata_df['id'] == id_str)]
         if instance < len(matching_rows):
-            return matching_rows.iloc[instance]['pred']
+            pred_val = matching_rows.iloc[instance]['pred']
+            impact_location = matching_rows.iloc[instance]['impact_location']
+            
+            # One-hot encode the impact location
+            encoded_location = one_hot_encode(impact_location, IMPACT_LOCATIONS)
+            
+            return pred_val, encoded_location
 
     # If not found, check for numbered suffixes
     i = 1
@@ -64,8 +81,41 @@ def get_metadata_prediction(impact_filepath):
         matching_rows = metadata_df[(metadata_df['team_code'] == team_code_str) & (metadata_df['id'] == id_str)]
 
         if instance < len(matching_rows):
-            return matching_rows.iloc[instance]['pred']
+            pred_val = matching_rows.iloc[instance]['pred']
+            impact_location = matching_rows.iloc[instance]['impact_location']
+
+            # One-hot encode the impact location
+            encoded_location = one_hot_encode(impact_location, IMPACT_LOCATIONS)
+
+            return pred_val, encoded_location
         
         i += 1
     
     raise IndexError(f"Instance {instance} not found for team_code {team_code_str} and id {id_str} in any metadata file for {suffix} with pred={pred_value_to_find}")
+
+def one_hot_encode(location, locations_list):
+    """
+    One-hot encodes a single location string into a vector.
+    
+    Args:
+        location (str): The impact location string to encode.
+        locations_list (list): The list of all possible location strings.
+        
+    Returns:
+        np.ndarray: A one-hot encoded vector.
+    """
+    # Create a zero vector
+    encoding = np.zeros(len(locations_list), dtype=int)
+    
+    # Find the index of the location and set that element to 1
+    try:
+        index = locations_list.index(location)
+        encoding[index] = 1
+    except ValueError:
+        # Handle the case where the location is not in the list
+        # This could be by raising an error, logging a warning, or assigning to an 'unknown' category
+        print(f"Warning: Location '{location}' not found in the predefined list.")
+        # Optionally, you could have an 'Unknown' category at a fixed index (e.g., the last one)
+        # and set that to 1 if the location is not found.
+    
+    return encoding

@@ -18,8 +18,8 @@ import numpy as np
 import pandas as pd
 from conjugate import conjugate_vrot_transform
 from shift_and_pad import shift_and_pad
-from calculate_ubric import read_impact
-from link_metadata import get_metadata_prediction
+from calculate_ubric import read_impact, filter_and_detrend
+from link_metadata import get_metadata
 
 
 def process_file(filepath, output_h5_path):
@@ -32,7 +32,14 @@ def process_file(filepath, output_h5_path):
         output_h5_path (str): Path to the output HDF5 file.
     """
     df = pd.read_csv(filepath)
+    
+    # Calculate sampling frequency
+    time = df.iloc[:, 0].astype(float).to_numpy()
+    fs = 1 / (time[1] - time[0])
+    
     profile = df.iloc[:, [4, 5, 6]].to_numpy()
+    profile = filter_and_detrend(profile, fs=fs)
+    
     cnn_length = 2000
     axes_permutations = list(itertools.permutations([0, 1, 2]))
     axes_labels = ["x", "y", "z"]
@@ -41,13 +48,14 @@ def process_file(filepath, output_h5_path):
     group_name, _ = os.path.splitext(base_name)
 
     # Get metadata prediction and ubric score
-    pred = get_metadata_prediction(filepath)
+    pred, impact_location = get_metadata(filepath)
     ubric_score = read_impact(filepath)
     with h5py.File(output_h5_path, "a") as hf:
         if group_name in hf:
             del hf[group_name]
         group = hf.create_group(group_name)
         group.attrs["pred"] = pred
+        group.attrs["impact_location"] = impact_location
         group.attrs["ubric_score"] = ubric_score
         print(f"Processing {filepath}")
 
@@ -77,7 +85,7 @@ if __name__ == "__main__":
     if output_h5_path is None:
         base_name = os.path.basename(args.filepath)
         if "_g" in base_name:
-            output_h5_path = "data/impact_data_game_augmented.h5"
+            output_h5_path = "data/impact_data_game.h5"
         elif "_tw" in base_name:
-            output_h5_path = "data/impact_data_training_augmented.h5"
+            output_h5_path = "data/impact_data_training.h5"
     process_file(args.filepath, output_h5_path)
