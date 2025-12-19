@@ -48,20 +48,18 @@ def get_metadata(impact_filepath):
 
     if os.path.exists(metadata_filepath):
         metadata_df = pd.read_csv(metadata_filepath, dtype={'id': str, 'team_code': str})
-        
-        # Filter by pred value if specified
-        if pred_value_to_find is not None:
-            metadata_df = metadata_df[metadata_df['pred'] == pred_value_to_find]
+        metadata_df = metadata_df[metadata_df['pred'] == pred_value_to_find]
 
         matching_rows = metadata_df[(metadata_df['team_code'] == team_code_str) & (metadata_df['id'] == id_str)]
         if instance < len(matching_rows):
             pred_val = matching_rows.iloc[instance]['pred']
             impact_location = matching_rows.iloc[instance]['impact_location']
+            ubric_score = matching_rows.iloc[instance]['ubric']
             
             # One-hot encode the impact location
             encoded_location = one_hot_encode(impact_location, IMPACT_LOCATIONS)
             
-            return pred_val, encoded_location
+            return pred_val, encoded_location, ubric_score
 
     # If not found, check for numbered suffixes
     i = 1
@@ -83,11 +81,11 @@ def get_metadata(impact_filepath):
         if instance < len(matching_rows):
             pred_val = matching_rows.iloc[instance]['pred']
             impact_location = matching_rows.iloc[instance]['impact_location']
-
+            ubric_score = matching_rows.iloc[instance]['ubric']
             # One-hot encode the impact location
             encoded_location = one_hot_encode(impact_location, IMPACT_LOCATIONS)
 
-            return pred_val, encoded_location
+            return pred_val, encoded_location, ubric_score
         
         i += 1
     

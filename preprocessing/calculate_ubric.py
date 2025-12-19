@@ -7,23 +7,13 @@ Paper can be found here: https://doi.org/10.1007/s10439-018-2015-9"""
 import numpy as np
 import pandas as pd
 import math
-from scipy import integrate, signal
+from scipy.integrate import cumulative_trapezoid
+
 
 # Critical values for UBrIC calculation (from Table 4 in the reference paper)
-w_cr = np.array([211.0, 171.0, 115.0])          
-a_cr = np.array([20e3, 10.3e3, 7.76e3])
+w_cr_MPS = np.array([179, 208, 112])          
+a_cr_MPS = np.array([13.7e3, 10.1e3, 8.54e3])
 r = 2.0 # reccommended value from the paper         
-
-def filter_and_detrend(data, cutoff=300.0, fs=3200.0, order=4):
-    """
-    Zero-phase 4th-order Butterworth filter for head kinematics.
-    Correctly normalizes cutoff frequency using fs.
-    """
-    data_detrended = signal.detrend(data, axis=0)
-    b, a = signal.butter(order, cutoff, btype='low', fs=fs)
-    y = signal.filtfilt(b, a, data_detrended, axis=0)
-    return y
-
 
 def ubric_term(wp, ap):
     """
@@ -42,7 +32,9 @@ def ubric_term(wp, ap):
 def acceleration_to_velocity(acc, time):
     """
     Paper requires angular velocity time series, but input data provides angular acceleration.
-    This function integrates angular acceleration to obtain angular velocity.
+    This function integrates angular acceleration to obtain angular velocity using
+    cumulative trapezoidal integration.
+
     Args:
         acc (np.ndarray): Angular acceleration time series.
         time (np.ndarray): Time vector corresponding to the acceleration data.
@@ -50,8 +42,7 @@ def acceleration_to_velocity(acc, time):
     Returns:
         vel (np.ndarray): Angular velocity time series.
     """
-    acc_detrended = signal.detrend(acc)
-    vel = integrate.cumulative_trapezoid(acc_detrended, time, initial=0.0)
+    vel = cumulative_trapezoid(acc, time, initial=0)
     return vel
 
 def compute_ubric(acc_values, vel_values):
@@ -68,21 +59,48 @@ def compute_ubric(acc_values, vel_values):
     # Calculate peak values for each axis
     a_vals = np.max(np.abs(acc_values), axis=1)
     # Calculate peak-to-peak velocity for each axis. Equation 8 in the paper
-    w_vals = np.max(vel_values, axis=1) - np.min(vel_values, axis=1)
+    w_vals = np.max(np.abs(vel_values), axis=1)
 
     # Normalize by critical values
-    w_prime = w_vals / w_cr
-    a_prime = a_vals / a_cr
+    w_prime_MPS = w_vals / w_cr_MPS
+    a_prime_MPS = a_vals / a_cr_MPS
+
+
 
     # Compute UBrIC terms for each axis
-    t_x = ubric_term(w_prime[0], a_prime[0])
-    t_y = ubric_term(w_prime[1], a_prime[1])
-    t_z = ubric_term(w_prime[2], a_prime[2])
+    t_x_MPS = ubric_term(w_prime_MPS[0], a_prime_MPS[0])
+    t_y_MPS = ubric_term(w_prime_MPS[1], a_prime_MPS[1])
+    t_z_MPS = ubric_term(w_prime_MPS[2], a_prime_MPS[2])
 
     # Compute overall UBrIC score (Equation 2)
-    ubric = (t_x**r + t_y**r + t_z**r)**(1/r)
-    ubric_nonzero = max(ubric, 0) 
-    return ubric_nonzero
+    ubric_MPS = (t_x_MPS**r + t_y_MPS**r + t_z_MPS**r)**(1/r)
+    ubric_nonzero_MPS = max(ubric_MPS, 0) 
+
+    return ubric_nonzero_MPS
+
+def calculate_ubric_from_profile(profile, time):
+    """
+    Computes UBrIC score from angular acceleration profile.
+    Args:
+        profile (np.ndarray): N x 3 array of angular acceleration (x, y, z).
+        time (np.ndarray): Time vector.
+    Returns:
+        ubric_score (float): Computed UBrIC score.
+    """
+    # Transpose to 3xN as expected by compute_ubric
+    acc_values = profile.T 
+    
+    acc_x = acc_values[0]
+    acc_y = acc_values[1]
+    acc_z = acc_values[2]
+     
+    vel_x = acceleration_to_velocity(acc_x, time)
+    vel_y = acceleration_to_velocity(acc_y, time)
+    vel_z = acceleration_to_velocity(acc_z, time)
+    vel_values = np.array([vel_x, vel_y, vel_z])
+    
+    ubric_score = compute_ubric(acc_values, vel_values)
+    return ubric_score
 
 def read_impact(path):
     """
@@ -105,13 +123,8 @@ def read_impact(path):
     acc_x = df["ang_x"].astype(float).to_numpy()
     acc_y = df["ang_y"].astype(float).to_numpy()
     acc_z = df["ang_z"].astype(float).to_numpy()
-    acc_x_filtered = filter_and_detrend(acc_x, cutoff=300.0, fs=freq, order=4)
-    acc_y_filtered = filter_and_detrend(acc_y, cutoff=300.0, fs=freq, order=4)
-    acc_z_filtered = filter_and_detrend(acc_z, cutoff=300.0, fs=freq, order=4)
-    acc_values = np.array([acc_x_filtered, acc_y_filtered, acc_z_filtered])
-    vel_x = acceleration_to_velocity(acc_x_filtered, time)
-    vel_y = acceleration_to_velocity(acc_y_filtered, time)
-    vel_z = acceleration_to_velocity(acc_z_filtered, time)
-    vel_values = np.array([vel_x, vel_y, vel_z])
-    ubric_score = compute_ubric(acc_values, vel_values)
-    return ubric_score
+    
+    # Reconstruct profile (N x 3) to use the shared function
+    profile = np.column_stack((acc_x, acc_y, acc_z))
+    
+    return calculate_ubric_from_profile(profile, time)

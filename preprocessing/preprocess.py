@@ -18,9 +18,8 @@ import numpy as np
 import pandas as pd
 from conjugate import conjugate_vrot_transform
 from shift_and_pad import shift_and_pad
-from calculate_ubric import read_impact, filter_and_detrend
+from calculate_ubric import calculate_ubric_from_profile
 from link_metadata import get_metadata
-
 
 def process_file(filepath, output_h5_path):
     """
@@ -38,7 +37,6 @@ def process_file(filepath, output_h5_path):
     fs = 1 / (time[1] - time[0])
     
     profile = df.iloc[:, [4, 5, 6]].to_numpy()
-    profile = filter_and_detrend(profile, fs=fs)
     cnn_length = 2000
     axes_permutations = list(itertools.permutations([0, 1, 2]))
     axes_labels = ["x", "y", "z"]
@@ -47,8 +45,8 @@ def process_file(filepath, output_h5_path):
     group_name, _ = os.path.splitext(base_name)
 
     # Get metadata prediction and ubric score
-    pred, impact_location = get_metadata(filepath)
-    ubric_score = read_impact(filepath)
+    pred, impact_location, ubric_hitiq = get_metadata(filepath)
+    ubric_score = calculate_ubric_from_profile(profile, time)
     with h5py.File(output_h5_path, "a") as hf:
         if group_name in hf:
             del hf[group_name]
@@ -56,6 +54,7 @@ def process_file(filepath, output_h5_path):
         group.attrs["pred"] = pred
         group.attrs["impact_location"] = impact_location
         group.attrs["ubric_score"] = ubric_score
+        group.attrs["ubric_hitiq"] = ubric_hitiq
         print(f"Processing {filepath}")
 
         for i, perm in enumerate(axes_permutations):
