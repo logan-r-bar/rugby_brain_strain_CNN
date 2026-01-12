@@ -14,5 +14,5 @@ read_h5_scores.py
 test.*
 hitiq_scrape.js
 *.keras
-/my_conda_env
+/env
 /false_cghs
