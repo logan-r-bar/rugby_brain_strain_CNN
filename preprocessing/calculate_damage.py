@@ -2,23 +2,14 @@ import numpy as np
 import pandas as pd
 from scipy.integrate import solve_ivp
 
-def compute_damage_from_csv(csv_path):
+def compute_damage_from_profile(profile, t):
     """
-    Compute DAMAGE from a CSV containing:
-        time [s]
-        acc_x, acc_y, acc_z [rad/s^2]
-
-    Returns:
-        DAMAGE (float), delta_norm (np.ndarray), time vector t
+    Compute DAMAGE from arrays:
+        t: time vector [s], shape (N,)
+        profile: angular acceleration, shape (N, 3)
     """
-    df = pd.read_csv(csv_path)
-    t = df.iloc[:, 0].astype(float).to_numpy()
-
-    acc = np.vstack([
-        df['ang_x'].to_numpy(),
-        df['ang_y'].to_numpy(),
-        df['ang_z'].to_numpy()
-    ])
+    t = np.asarray(t, dtype=float)
+    acc = np.asarray(profile, dtype=float).T
 
     M = np.diag([1.0, 1.0, 1.0])
     kxx, kyy, kzz = 32142.0, 23493.0, 16935.0
@@ -32,10 +23,10 @@ def compute_damage_from_csv(csv_path):
 
     a1 = 5.9148e-3
     C = a1 * K
-    
+
     # Scale factor
     beta = 2.9903
-    
+
     # Build state-space system
     Minv = np.linalg.inv(M)
     A = np.zeros((6, 6))
@@ -70,4 +61,23 @@ def compute_damage_from_csv(csv_path):
 
     return damage
 
+def compute_damage_from_csv(csv_path):
+    """
+    Compute DAMAGE from a CSV containing:
+        time [s]
+        acc_x, acc_y, acc_z [rad/s^2]
+    """
+    df = pd.read_csv(csv_path)
+    t = df.iloc[:, 0].astype(float).to_numpy()
+
+    if {'ang_x', 'ang_y', 'ang_z'}.issubset(df.columns):
+        profile = np.column_stack([
+            df['ang_x'].to_numpy(),
+            df['ang_y'].to_numpy(),
+            df['ang_z'].to_numpy()
+        ])
+    else:
+        profile = df.iloc[:, 1:4].to_numpy()
+
+    return compute_damage_from_profile(t, profile)
 

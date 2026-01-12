@@ -11,3 +11,6 @@ test.h5
 data/impact_data
 /data
 read_h5_scores.py
+test.*
+hitiq_scrape.js
+*.keras

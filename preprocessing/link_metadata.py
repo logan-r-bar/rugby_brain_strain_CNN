@@ -13,6 +13,17 @@ IMPACT_LOCATIONS = [
     'Top Right', 'Unknown'
 ]
 
+FRONT = [
+    'Front', 'Front Bottom Left', 'Front Bottom Right', 'Front Left' , 'Front Neck', 'Front Right', 'Front Top Left', 'Front Top Right', 'Top Front', 'Bottom Front'
+    ]
+
+BACK = [
+    'Back', 'Back Left', 'Back Neck', 'Back Right', 'Back Top Left', 'Back Top Right', 'Top Back', 'Bottom Back', 'Bottom Back Left', 'Bottom Back Right'
+    ]
+
+SIDE = [
+    'Left', 'Left Neck', 'Right', 'Right Neck', 'Top Left', 'Top Right', 'Bottom Left', 'Bottom Right'
+    ]
 def get_metadata(impact_filepath):
     """
     Parses an impact file path to find the corresponding metadata entry and return the 'pred' and 'ubric' values.
