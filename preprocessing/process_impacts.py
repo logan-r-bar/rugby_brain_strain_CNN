@@ -110,7 +110,7 @@ def get_h5_path(team_dir, team_name, session_type):
 def process_all_data():
     root_data_dir = "data"
     unknown_folders = []
-    target_team = "ellesmere_u16"
+    target_team = "cghs"
 
     for team_entry in os.scandir(root_data_dir):
         if not team_entry.is_dir():
