@@ -16,3 +16,4 @@ hitiq_scrape.js
 *.keras
 /env
 /false_cghs
+terminal_start.txt
