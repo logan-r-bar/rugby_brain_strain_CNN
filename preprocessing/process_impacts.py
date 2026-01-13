@@ -212,6 +212,8 @@ def process_all_data():
 
                     pred = row[pred_idx] if pred_idx is not None else np.nan
                     passed_qa = row[qa_idx] if qa_idx is not None else np.nan
+                    if pd.isna(passed_qa):
+                        passed_qa = False
                     impact_loc = row[loc_idx] if loc_idx is not None else 'Unknown'
 
                     if process_file(trajectory_file, hf, pred, passed_qa, impact_loc):
