@@ -79,5 +79,5 @@ def compute_damage_from_csv(csv_path):
     else:
         profile = df.iloc[:, 1:4].to_numpy()
 
-    return compute_damage_from_profile(t, profile)
+    return compute_damage_from_profile(profile, t)
 
