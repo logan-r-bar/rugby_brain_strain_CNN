@@ -28,6 +28,21 @@ AXES_PERMS = ((0, 1, 2),) + tuple(
 )
 AXES_LABELS = ("x", "y", "z")
 
+def normalize_bool(value, default=False):
+    if pd.isna(value):
+        return default
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer, float, np.floating)):
+        return bool(int(value))
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "t", "yes", "y", "1"}:
+            return True
+        if text in {"false", "f", "no", "n", "0"}:
+            return False
+    return default
+
 def one_hot_encode(location):
     enc = np.zeros(len(IMPACT_LOCATIONS), dtype=np.int8)
     if pd.isna(location):
@@ -211,9 +226,12 @@ def process_all_data():
                     trajectory_file = os.path.join(trajectories_dir, f"{impact_id}.csv")
 
                     pred = row[pred_idx] if pred_idx is not None else np.nan
-                    passed_qa = row[qa_idx] if qa_idx is not None else np.nan
-                    if pd.isna(passed_qa):
-                        passed_qa = False
+                    if qa_idx is None:
+                        continue
+                    raw_qa = row[qa_idx]
+                    if pd.isna(raw_qa):
+                        continue
+                    passed_qa = normalize_bool(raw_qa, default=False)
                     impact_loc = row[loc_idx] if loc_idx is not None else 'Unknown'
 
                     if process_file(trajectory_file, hf, pred, passed_qa, impact_loc):

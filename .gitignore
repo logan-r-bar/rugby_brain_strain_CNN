@@ -17,3 +17,6 @@ hitiq_scrape.js
 /env
 /false_cghs
 terminal_start.txt
+download_script.txt
+merge_impacts.py
+*.csv
