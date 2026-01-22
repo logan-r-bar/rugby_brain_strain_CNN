@@ -1,8 +1,6 @@
 import os
 import warnings
 
-from matplotlib.pylab import sample
-
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_auto_jit=0"
 warnings.filterwarnings("ignore", category=FutureWarning, message=".*np.object.*")
@@ -27,6 +25,7 @@ IMPACT_LOCATIONS = [
 ]
 
 
+# noinspection PyUnresolvedReferences
 def compute_damage_from_profile(profile, t):
     """
     Compute DAMAGE from arrays:
@@ -36,28 +35,28 @@ def compute_damage_from_profile(profile, t):
     t = np.asarray(t, dtype=float)
     acc = np.asarray(profile, dtype=float).T
 
-    M = np.diag([1.0, 1.0, 1.0])
+    m = np.diag([1.0, 1.0, 1.0])
     kxx, kyy, kzz = 32142.0, 23493.0, 16935.0
     kxy, kyz, kxz = 0.0, 0.0, 1636.3
 
-    K = np.array([
+    k = np.array([
         [kxx + kxy + kxz, -kxy,             -kxz],
         [-kxy,            kxy + kyy + kyz,  -kyz],
         [-kxz,            -kyz,             kxz + kyz + kzz]
     ])
 
     a1 = 5.9148e-3
-    C = a1 * K
+    c = a1 * k
 
     # Scale factor
     beta = 2.9903
 
     # Build state-space system
-    Minv = np.linalg.inv(M)
-    A = np.zeros((6, 6))
-    A[0:3, 3:6] = np.eye(3)
-    A[3:6, 0:3] = -Minv @ K
-    A[3:6, 3:6] = -Minv @ C
+    minv = np.linalg.inv(m)
+    a = np.zeros((6, 6))
+    a[0:3, 3:6] = np.eye(3)
+    a[3:6, 0:3] = -minv @ k
+    a[3:6, 3:6] = -minv @ c
 
     # Forcing
     def rhs(ti, xi):
@@ -69,7 +68,7 @@ def compute_damage_from_profile(profile, t):
 
         xdot = np.zeros(6)
         xdot[0:3] = delta_dot
-        xdot[3:6] = -Minv @ (C @ delta_dot + K @ delta) + alph.flatten()
+        xdot[3:6] = -minv @ (c @ delta_dot + k @ delta) + alph.flatten()
         return xdot
 
     x0 = np.zeros(6)
@@ -118,13 +117,13 @@ def shift_and_pad(profile, target_idx, cnn_length):
 
     Returns:
         padded (np.ndarray): Padded time series of shape (cnn_length, C)."""
-    N, C = profile.shape
+    n, c = profile.shape
     res = resultant_val(profile)
     peak_idx = np.argmax(res)
     shift = target_idx - peak_idx
-    padded = np.zeros((cnn_length, C))
+    padded = np.zeros((cnn_length, c))
     start = max(shift, 0)
-    end = min(start + N, cnn_length)
+    end = min(start + n, cnn_length)
     profile_end = end - start
     padded[start:end] = profile[:profile_end]
     if start > 0:

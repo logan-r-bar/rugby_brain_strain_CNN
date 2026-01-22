@@ -6,6 +6,7 @@ Original MATLAB implementation can be found here: https://github.com/Jilab-biome
 """
 
 import numpy as np
+
 from resultant_val import resultant_val
 from vector_angle_conversion import ang2vec, vec2ang
 
@@ -34,7 +35,7 @@ def conjugate_rotational_axis(theta, alpha):
 
 def conjugate_vrot_transform(profile):
     """
-    Function transform the rotational profile to the profile with cojugate
+    Function transform the rotational profile to the profile with conjugate
     rotational axis.
 
     Args:

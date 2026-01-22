@@ -1,12 +1,14 @@
-import os
 import itertools
+import os
+
 import h5py
 import numpy as np
 import pandas as pd
+
+from calculate_damage import compute_damage_from_profile
+from calculate_ubric import calculate_ubric_from_profile
 from conjugate import conjugate_vrot_transform
 from shift_and_pad import shift_and_pad
-from calculate_ubric import calculate_ubric_from_profile
-from calculate_damage import compute_damage_from_profile
 
 IMPACT_LOCATIONS = [
     'Back', 'Back Left', 'Back Neck', 'Back Right', 'Back Top Left', 'Back Top Right',
@@ -28,6 +30,7 @@ AXES_PERMS = ((0, 1, 2),) + tuple(
 )
 AXES_LABELS = ("x", "y", "z")
 
+
 def normalize_bool(value, default=False):
     if pd.isna(value):
         return default
@@ -43,6 +46,7 @@ def normalize_bool(value, default=False):
             return False
     return default
 
+
 def one_hot_encode(location):
     enc = np.zeros(len(IMPACT_LOCATIONS), dtype=np.int8)
     if pd.isna(location):
@@ -54,6 +58,7 @@ def one_hot_encode(location):
     if idx is not None:
         enc[idx] = 1
     return enc
+
 
 def process_file(filepath, hf, pred, passed_qa, impact_location):
     """
@@ -115,6 +120,7 @@ def process_file(filepath, hf, pred, passed_qa, impact_location):
         print(f"Error processing {filepath}: {e}")
         return False
 
+
 def get_h5_path(team_dir, team_name, session_type):
     if session_type == 'Training':
         return os.path.join(team_dir, f"{team_name}_training.h5")
@@ -122,6 +128,8 @@ def get_h5_path(team_dir, team_name, session_type):
         return os.path.join(team_dir, f"{team_name}_game.h5")
     return None
 
+
+# noinspection PyUnresolvedReferences
 def process_all_data():
     root_data_dir = "data"
     unknown_folders = []
@@ -191,9 +199,11 @@ def process_all_data():
             metadata_df.columns = [c.strip() for c in metadata_df.columns]
 
             id_col = 'Id' if 'Id' in metadata_df.columns else ('_id' if '_id' in metadata_df.columns else None)
-            pred_col = 'Pred' if 'Pred' in metadata_df.columns else ('prediction' if 'prediction' in metadata_df.columns else None)
+            pred_col = 'Pred' if 'Pred' in metadata_df.columns else (
+                'prediction' if 'prediction' in metadata_df.columns else None)
             qa_col = 'Passed QA' if 'Passed QA' in metadata_df.columns else None
-            loc_col = 'Impact Location' if 'Impact Location' in metadata_df.columns else ('impact_location' if 'impact_location' in metadata_df.columns else None)
+            loc_col = 'Impact Location' if 'Impact Location' in metadata_df.columns else (
+                'impact_location' if 'impact_location' in metadata_df.columns else None)
 
             id_idx = metadata_df.columns.get_loc(id_col) if id_col else None
             pred_idx = metadata_df.columns.get_loc(pred_col) if pred_col else None
@@ -214,7 +224,6 @@ def process_all_data():
             count = 0
             session_rows = []
             with h5py.File(h5_path, "a") as hf:
-                # itertuples is much faster than iterrows
                 for row in metadata_df.itertuples(index=False):
                     impact_id = row[id_idx] if id_idx is not None else None
                     if pd.isna(impact_id):
@@ -254,6 +263,7 @@ def process_all_data():
             for folder in unknown_folders:
                 f.write(f"{folder}\n")
         print(f"Logged {len(unknown_folders)} unknown folders to data/unknown_folders.txt")
+
 
 if __name__ == "__main__":
     process_all_data()

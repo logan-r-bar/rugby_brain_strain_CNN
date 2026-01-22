@@ -4,16 +4,17 @@ This is a recreation of the Development of a Metric for Predicting Brain Strain 
 Comments should describe the steps taken to compute UBrIC as per the paper.
 Paper can be found here: https://doi.org/10.1007/s10439-018-2015-9"""
 
+import math
+
 import numpy as np
 import pandas as pd
-import math
 from scipy.integrate import cumulative_trapezoid
 
-
 # Critical values for UBrIC calculation (from Table 4 in the reference paper)
-w_cr_MPS = np.array([179, 208, 112])          
+w_cr_MPS = np.array([179, 208, 112])
 a_cr_MPS = np.array([13.7e3, 10.1e3, 8.54e3])
-r = 2.0 # reccommended value from the paper         
+r = 2.0  # recommended value from the paper
+
 
 def ubric_term(wp, ap):
     """
@@ -27,7 +28,8 @@ def ubric_term(wp, ap):
         float: UBrIC term for the axis.
     """
     ratio = ap / wp
-    return wp + (ap - wp) * math.exp(-(ratio))
+    return wp + (ap - wp) * math.exp(-ratio)
+
 
 def acceleration_to_velocity(acc, time):
     """
@@ -44,6 +46,7 @@ def acceleration_to_velocity(acc, time):
     """
     vel = cumulative_trapezoid(acc, time, initial=0)
     return vel
+
 
 def compute_ubric(acc_values, vel_values):
     """
@@ -62,21 +65,20 @@ def compute_ubric(acc_values, vel_values):
     w_vals = np.max(np.abs(vel_values), axis=1)
 
     # Normalize by critical values
-    w_prime_MPS = w_vals / w_cr_MPS
-    a_prime_MPS = a_vals / a_cr_MPS
-
-
+    w_prime = w_vals / w_cr_MPS
+    a_prime = a_vals / a_cr_MPS
 
     # Compute UBrIC terms for each axis
-    t_x_MPS = ubric_term(w_prime_MPS[0], a_prime_MPS[0])
-    t_y_MPS = ubric_term(w_prime_MPS[1], a_prime_MPS[1])
-    t_z_MPS = ubric_term(w_prime_MPS[2], a_prime_MPS[2])
+    t_x = ubric_term(w_prime[0], a_prime[0])
+    t_y = ubric_term(w_prime[1], a_prime[1])
+    t_z = ubric_term(w_prime[2], a_prime[2])
 
     # Compute overall UBrIC score (Equation 2)
-    ubric_MPS = (t_x_MPS**r + t_y_MPS**r + t_z_MPS**r)**(1/r)
-    ubric_nonzero_MPS = max(ubric_MPS, 0) 
+    ubric = (t_x ** r + t_y ** r + t_z ** r) ** (1 / r)
+    ubric_nonzero = max(ubric, 0)
 
-    return ubric_nonzero_MPS
+    return ubric_nonzero
+
 
 def calculate_ubric_from_profile(profile, time):
     """
@@ -88,19 +90,20 @@ def calculate_ubric_from_profile(profile, time):
         ubric_score (float): Computed UBrIC score.
     """
     # Transpose to 3xN as expected by compute_ubric
-    acc_values = profile.T 
-    
+    acc_values = profile.T
+
     acc_x = acc_values[0]
     acc_y = acc_values[1]
     acc_z = acc_values[2]
-     
+
     vel_x = acceleration_to_velocity(acc_x, time)
     vel_y = acceleration_to_velocity(acc_y, time)
     vel_z = acceleration_to_velocity(acc_z, time)
     vel_values = np.array([vel_x, vel_y, vel_z])
-    
+
     ubric_score = compute_ubric(acc_values, vel_values)
     return ubric_score
+
 
 def read_impact(path):
     """
@@ -114,17 +117,16 @@ def read_impact(path):
     df = pd.read_csv(path)
     df = df.rename(columns={"Unnamed: 0": "time"})
     time_col = "time"
-    
+
     time = df[time_col].astype(float).to_numpy()
-    
+
     # Calculate sampling frequency, assuming uniform sampling
-    freq = 1 / (time[1] - time[0])
 
     acc_x = df["ang_x"].astype(float).to_numpy()
     acc_y = df["ang_y"].astype(float).to_numpy()
     acc_z = df["ang_z"].astype(float).to_numpy()
-    
+
     # Reconstruct profile (N x 3) to use the shared function
     profile = np.column_stack((acc_x, acc_y, acc_z))
-    
+
     return calculate_ubric_from_profile(profile, time)

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.integrate import solve_ivp
 
+
 def compute_damage_from_profile(profile, t):
     """
     Compute DAMAGE from arrays:
@@ -11,28 +12,28 @@ def compute_damage_from_profile(profile, t):
     t = np.asarray(t, dtype=float)
     acc = np.asarray(profile, dtype=float).T
 
-    M = np.diag([1.0, 1.0, 1.0])
+    m = np.diag([1.0, 1.0, 1.0])
     kxx, kyy, kzz = 32142.0, 23493.0, 16935.0
     kxy, kyz, kxz = 0.0, 0.0, 1636.3
 
-    K = np.array([
+    k = np.array([
         [kxx + kxy + kxz, -kxy,             -kxz],
         [-kxy,            kxy + kyy + kyz,  -kyz],
         [-kxz,            -kyz,             kxz + kyz + kzz]
     ])
 
     a1 = 5.9148e-3
-    C = a1 * K
+    c = a1 * k
 
     # Scale factor
     beta = 2.9903
 
     # Build state-space system
-    Minv = np.linalg.inv(M)
-    A = np.zeros((6, 6))
-    A[0:3, 3:6] = np.eye(3)
-    A[3:6, 0:3] = -Minv @ K
-    A[3:6, 3:6] = -Minv @ C
+    minv = np.linalg.inv(m)
+    a = np.zeros((6, 6))
+    a[0:3, 3:6] = np.eye(3)
+    a[3:6, 0:3] = -minv @ k
+    a[3:6, 3:6] = -minv @ c
 
     # Forcing
     def rhs(ti, xi):
@@ -44,7 +45,7 @@ def compute_damage_from_profile(profile, t):
 
         xdot = np.zeros(6)
         xdot[0:3] = delta_dot
-        xdot[3:6] = -Minv @ (C @ delta_dot + K @ delta) + alph.flatten()
+        xdot[3:6] = -minv @ (c @ delta_dot + k @ delta) + alph.flatten()
         return xdot
 
     x0 = np.zeros(6)
@@ -60,6 +61,7 @@ def compute_damage_from_profile(profile, t):
     damage = beta * np.max(delta_norm)
 
     return damage
+
 
 def compute_damage_from_csv(csv_path):
     """
@@ -80,4 +82,3 @@ def compute_damage_from_csv(csv_path):
         profile = df.iloc[:, 1:4].to_numpy()
 
     return compute_damage_from_profile(profile, t)
-
